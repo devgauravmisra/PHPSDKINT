@@ -1,79 +1,65 @@
-<script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.sandbox.js"></script>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 <body onload="payment()">
-<?php
-
-$frmData = array(
-
-     'order_id' => 'OrderId'.rand(),
-     'order_amount' => $_POST['orderamount'],
-     'order_note' => $_POST['ordernote'],
-     'order_currency' => 'INR',
-
-'customer_details' => array(
-     'customer_id' => 'customer_'.rand(),
-     'customer_name' => $_POST['customername'],
-     'customer_phone' => $_POST['cuatomerphone'],
-     'customer_email' => $_POST['customeremail']
-    
-),
-'order_meta'=> array(
-        'return_url' => 'http://localhost:8888/V3Api/success.php?order_id={order_id}',
-        'notify_url' => '',
-        'payment_methods' =>'' 
-)
-);
-
-       $url = "https://sandbox.cashfree.com/pg/orders";
+   <?php
+      require "config.php";
       
-        $data_string = json_encode($frmData );
-       
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, "$url");
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt(
-            $ch,
-            CURLOPT_HTTPHEADER,
-            array(
-                'Accept: application/json',
-                'x-api-version: 2022-09-01',
-                'Content-Type: application/json',
-                'x-client-id: 13764729ed596674a0f96e06f3746731',
-                'x-client-secret:1f4ee1fd095fcd3cfa702f0c91389c8adca03b5a'
-            )
-        );
-
-        $result = curl_exec($ch);
-        $returnCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        $resp = json_decode($result, true);
+      $orderDetails = array(
+      
+           'order_id' => 'OrderId_'.rand(),
+           'order_amount' => $_POST['orderamount'],
+           'order_note' => $_POST['ordernote'],
+           'order_currency' => 'INR',
+      );
+      
+      $customer_details = array(
+           'customer_name' => $_POST['customername'],
+           'customer_phone' => $_POST['mobile_number'],
+           'customer_email' => $_POST['customeremail']
+          
+      );
      
-        $session =  $resp['payment_session_id'];
-       
+      $order_meta = array(
+            'return_url' => 'http://localhost:8888/v3apisdk/success.php?order_id={order_id}',
+             'notify_url' => 'https://webhook.site/84cc1ef7-0e3c-4e36-9072-a607599c3857',
+      
+      );
+      $custid = 'customer_'.rand();
+      $custphone =   $customer_details['customer_phone'];
+      $custname = $customer_details['customer_name'];
+      $custemail= $customer_details['customer_email'];
+      $cashfree = new \Cashfree\Cashfree();
+      $create_orders_request = new \Cashfree\Model\CreateOrderRequest();
+      $create_orders_request->setOrderAmount($orderDetails['order_amount']);
+      $create_orders_request->setOrderCurrency("INR");
+      $customer_details = new \Cashfree\Model\CustomerDetails();
+      $customer_details->setCustomerId("$custid");
+      $customer_details->setCustomerPhone($custphone );
+      $customer_details->setCustomerEmail($custemail );
+      $customer_details->setCustomerName( $custname );
+      $create_orders_request->setCustomerDetails($customer_details);
+      $create_orders_request->setOrderMeta($order_meta);
+      try {
+          $result = $cashfree->PGCreateOrder($x_api_version, $create_orders_request);
+         
+         $session =  $result['0']['payment_session_id'];
+      } catch (Exception $e) {
+          echo 'Exception when calling PGCreateOrder: ', $e->getMessage(), PHP_EOL;
+      }
+      ?>  
+   <h4>Loading.....</h4>
+   <span hidden class="order-token">Payment Session Id :</span> <input type="hidden" placeholder="order_token" id="paymentSessionId" value="<?php echo"$session";?>" class="inputText">
 
-?>
-<Body>
-<h4>Loading.....</h4>
-<span hidden class="order-token">Payment Session Id :</span> <input type="hidden" placeholder="order_token"
-    id="paymentSessionId" value="<?php echo"$session"?>" class="inputText">
-
-
-</Body>
-
-<script>
-function payment() {
-    let paymentSessionId = document.getElementById("paymentSessionId").value;
-    if (paymentSessionId == "") {
-        alert("No session_id specified");
-        return
-    };
-    const cf = new Cashfree(paymentSessionId);
-    cf.redirect();
-};
-</script>
+   <script>
+      function payment() {
+          const cashfree = Cashfree({
+          mode:"sandbox" //or production
+      });
+      
+      let checkoutOptions = {
+          paymentSessionId: document.getElementById("paymentSessionId").value,
+          redirectTarget: "_self " //optional (_self or _blank)
+      }
+      cashfree.checkout(checkoutOptions)
+      };
+   </script>
 </body>
